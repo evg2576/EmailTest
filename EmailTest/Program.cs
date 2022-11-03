@@ -1,64 +1,60 @@
-﻿using System.Net;
-using System.Net.Mail;
+﻿using MailKit.Net.Smtp;
+using MimeKit;
 
 internal class Program
 {
-    private static void Main(string[] args)
+    static async Task Main(string[] args)
     {
-        Send();
+        MailService mailService = new MailService();
+        FileStream fileStream = new FileStream("c:/textfile.txt", FileMode.Open);
+        string[] mailsTo = { "24evgeniy03@gmail.com" };
+        var res = await mailService.Send(mailsTo, "Subject123", "Body123", fileStream, "Test123");
     }
+}
 
-    public static void Send()
+public class MailService : IMailService
+{
+    public async Task<bool> Send(string[] to, string subject, string body, Stream file = null, string file_name = null)
     {
-        MailMessage mail = new MailMessage();
-        SmtpClient SmtpServer = new SmtpClient("smtp.gmail.com");
-        mail.From = new MailAddress("24evgeniy00@gmail.com");
-        mail.To.Add("24evgeniy03@gmail.com");
-        mail.Subject = "Test Mail - 1";
-        mail.Body = "mail with attachment";
+        try
+        {
+            var emailMessage = new MimeMessage();
+            emailMessage.From.Add(new MailboxAddress("Администрация сайта", "24evgeniy00@gmail.com"));
+            emailMessage.Subject = subject;
 
-        Attachment attachment;
-        attachment = new Attachment("c:/textfile.txt");
-        mail.Attachments.Add(attachment);
+            var recipients = new List<MailboxAddress>();
+            foreach (var item in to)
+                recipients.Add(new MailboxAddress("", item));
+            emailMessage.To.AddRange(recipients);
 
-        SmtpServer.Port = 587;
-        SmtpServer.Credentials = new NetworkCredential("24evgeniy00@gmail.com", "qvopvrxbosdagrsd");
-        SmtpServer.EnableSsl = true;
-        SmtpServer.UseDefaultCredentials = false;
+            var builder = new BodyBuilder();
+            builder.TextBody = body;
+            if (file != null && file_name != null)
+            {
+                FileStream fs = file as FileStream;
+                builder.Attachments.Add(file_name + Path.GetExtension(fs.Name), file);
+            }
+            emailMessage.Body = builder.ToMessageBody();
 
-        SmtpServer.Send(mail);
+            using (var client = new SmtpClient())
+            {
+                await client.ConnectAsync("smtp.gmail.com", 465, true);
+                await client.AuthenticateAsync("24evgeniy00@gmail.com", "password");
+                await client.SendAsync(emailMessage);
+                await client.DisconnectAsync(true);
+            }
 
-
-        //String SendMailFrom = "24evgeniy00@gmail.com";
-        //String SendMailTo = "24evgeniy03@gmail.com";
-        //String SendMailSubject = "Email Subject";
-        //String SendMailBody = "Email Body";
-
-        //try
-        //{
-        //    SmtpClient SmtpServer = new SmtpClient("smtp.gmail.com", 587);
-        //    SmtpServer.DeliveryMethod = SmtpDeliveryMethod.Network;
-        //    MailMessage email = new MailMessage();
-        //    // START
-        //    email.From = new MailAddress(SendMailFrom);
-        //    email.To.Add(SendMailTo);
-        //    email.CC.Add(SendMailFrom);
-        //    email.Subject = SendMailSubject;
-        //    email.Body = SendMailBody;
-        //    //END
-        //    SmtpServer.Timeout = 5000;
-        //    SmtpServer.EnableSsl = true;
-        //    SmtpServer.UseDefaultCredentials = false;
-        //    SmtpServer.Credentials = new NetworkCredential(SendMailFrom, "qvopvrxbosdagrsd");
-        //    SmtpServer.Send(email);
-
-        //    Console.WriteLine("Email Successfully Sent");
-        //    Console.ReadKey();
-        //}
-        //catch (Exception ex)
-        //{
-        //    Console.WriteLine(ex.ToString());
-        //    Console.ReadKey();
-        //}
+            return true;
+        }
+        catch (Exception)
+        {
+            throw;
+            return false;
+        }
     }
+}
+
+public interface IMailService
+{
+    Task<bool> Send(string[] to, string subject, string body, Stream file = null, string file_name = null);
 }
