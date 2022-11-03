@@ -5,21 +5,49 @@ internal class Program
 {
     static async Task Main(string[] args)
     {
-        MailService mailService = new MailService();
+        MailService mailService = new MailService(new MailOptions { DisplayName = "Администрация сайта", Mail = "", Port = 465, Host = "smtp.gmail.com", SSL = true, Password = "" });
         FileStream fileStream = new FileStream("c:/textfile.txt", FileMode.Open);
-        string[] mailsTo = { "24evgeniy03@gmail.com" };
+        string[] mailsTo = { "" };
         var res = await mailService.Send(mailsTo, "Subject123", "Body123", fileStream, "Test123");
     }
 }
 
+// readme для заказчика по добавлению почты, с которой будут отправляться сообщения
+// зайти в управление аккаунтом Google 
+// на вкладке "Безопасность" в разделе Вход в аккаунт Google включить Двухэтапную аутентификацию
+// в этом же разделе зайти в "Пароли приложений"
+// в выпадающем списке "Приложение" выбрать "Другое", ввести название и нажать "Создать, после чего сгенерируется пароль для приложения
+
+public class MailOptions
+{
+    public string Host { get; set; }
+    public string Mail { get; set; }
+    public string Password { get; set; }
+    public string DisplayName { get; set; }
+    public int Port { get; set; }
+    public bool SSL { get; set; }
+}
+
+public interface IMailService
+{
+    Task<bool> Send(string[] to, string subject, string body, Stream file = null, string file_name = null);
+}
+
 public class MailService : IMailService
 {
+    MailOptions mailOptions;
+
+    public MailService(MailOptions mailOptions)
+    {
+        this.mailOptions = mailOptions;
+    }
+
     public async Task<bool> Send(string[] to, string subject, string body, Stream file = null, string file_name = null)
     {
         try
         {
             var emailMessage = new MimeMessage();
-            emailMessage.From.Add(new MailboxAddress("Администрация сайта", "24evgeniy00@gmail.com"));
+            emailMessage.From.Add(new MailboxAddress(mailOptions.DisplayName, mailOptions.Mail));
             emailMessage.Subject = subject;
 
             var recipients = new List<MailboxAddress>();
@@ -38,23 +66,16 @@ public class MailService : IMailService
 
             using (var client = new SmtpClient())
             {
-                await client.ConnectAsync("smtp.gmail.com", 465, true);
-                await client.AuthenticateAsync("24evgeniy00@gmail.com", "password");
+                await client.ConnectAsync(mailOptions.Host, mailOptions.Port, mailOptions.SSL);
+                await client.AuthenticateAsync(mailOptions.Mail, mailOptions.Password);
                 await client.SendAsync(emailMessage);
                 await client.DisconnectAsync(true);
             }
-
             return true;
         }
         catch (Exception)
         {
             throw;
-            return false;
         }
     }
-}
-
-public interface IMailService
-{
-    Task<bool> Send(string[] to, string subject, string body, Stream file = null, string file_name = null);
 }
