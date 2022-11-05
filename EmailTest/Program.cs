@@ -8,7 +8,7 @@ internal class Program
         MailService mailService = new MailService(new MailOptions { DisplayName = "Администрация сайта", Mail = "", Port = 465, Host = "smtp.gmail.com", SSL = true, Password = "" });
         FileStream fileStream = new FileStream("c:/textfile.txt", FileMode.Open);
         string[] mailsTo = { "" };
-        var res = await mailService.Send(mailsTo, "Subject123", "Body123", fileStream, "Test123");
+        var res = await mailService.Send(mailsTo, "Subject123", "<h1>Body123</h1><p>123321</p>123", fileStream, "Test123");
     }
 }
 
@@ -56,7 +56,8 @@ public class MailService : IMailService
             emailMessage.To.AddRange(recipients);
 
             var builder = new BodyBuilder();
-            builder.TextBody = body;
+            builder.HtmlBody = body;
+
             if (file != null && file_name != null)
             {
                 FileStream fs = file as FileStream;
